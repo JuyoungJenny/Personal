@@ -24,16 +24,10 @@ const api={
   addRecord:(row)=>fetch(SB_URL+"/rest/v1/test_records",{method:"POST",headers:HR,body:JSON.stringify(row)}).then(r=>r.json()),
   deleteRecord:(id)=>fetch(SB_URL+"/rest/v1/test_records?id=eq."+id,{method:"DELETE",headers:H}),
   uploadImage:async(file,path)=>{
-    const sh={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY};
-    const bc=await fetch(SB_URL+"/storage/v1/bucket/test-images",{headers:sh});
-    if(!bc.ok){
-      const cr=await fetch(SB_URL+"/storage/v1/bucket",{method:"POST",headers:{...sh,"Content-Type":"application/json"},body:JSON.stringify({id:"test-images",name:"test-images",public:true})});
-      if(!cr.ok)throw new Error(await cr.text());
-    }
-    const res=await fetch(SB_URL+"/storage/v1/object/test-images/"+path,{method:"POST",headers:{...sh,"Content-Type":file.type},body:file});
+    const res=await fetch(SB_URL+"/storage/v1/object/test-images/"+path,{method:"POST",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":file.type},body:file});
     if(!res.ok)throw new Error(await res.text());
     return SB_URL+"/storage/v1/object/public/test-images/"+path;
-  },  deleteImage:(path)=>fetch(SB_URL+"/storage/v1/object/test-images/"+path,{method:"DELETE",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}}),
+  },deleteImage:(path)=>fetch(SB_URL+"/storage/v1/object/test-images/"+path,{method:"DELETE",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}}),
 };
 
 const TC=[
