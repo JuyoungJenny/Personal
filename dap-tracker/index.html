@@ -205,7 +205,7 @@ function App(){
   const handleImgs=e=>{
     Array.from(e.target.files).forEach(async file=>{
       const tid=Date.now()+Math.random();
-      const path=key+"/"+tid+"_"+file.name;
+      const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'-');const path=key+"/"+tid+"_"+safeName;
       setImgs(p=>[...p,{tid,name:file.name,url:URL.createObjectURL(file),path,up:true}]);
       try{
         const url=await api.uploadImage(file,path);
