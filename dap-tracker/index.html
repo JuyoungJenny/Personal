@@ -30,28 +30,99 @@ const api={
   },
   deleteImage:(path)=>fetch(SB_URL+"/storage/v1/object/test-images/"+path,{method:"DELETE",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}}),
 };
+
+// 정책 참조표 (쿠폰 10개 / 적립 10개)
+// 쿠폰-1:0~15%/동등  쿠폰-2:0~13%/우위2%  쿠폰-3:0~10%/우위3%  쿠폰-4:0~10%/우위5%
+// 쿠폰-5:0~5%/우위3% 쿠폰-6:5~10%/우위3%  쿠폰-7:0~5%/동등     쿠폰-8:10~20%/우위5%
+// 쿠폰-9:5~15%/우위3% 쿠폰-10:5~10%/우위7%
+// 적립-1:0~15%/동등  적립-2:0~13%/우위2%  적립-3:0~10%/우위3%  적립-4:0~10%/우위5%
+// 적립-5:0~5%/우위3% 적립-6:5~10%/우위3%  적립-7:0~5%/동등     적립-8:10~20%/우위5%
+// 적립-9:0~20%/우위7% 적립-10:0~20%/우위10%
+
 const TC=[
-  {id:"1-1",g:"#1 정상 적용",t:"기존 적용 혜택 없음 & 동등 목표",c:30000,ss:{im:33000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:32010,ir:"6.28%",v:[{tp:"쿠폰",r:"0~10%",gl:"동등",br:"쿠폰 7%",ex:"쿠폰 7% → 체감가 29,769원 (목표가 30,000원 초과, 절상)"},{tp:"적립",r:"0~10%",gl:"동등",br:"적립 7%",ex:"적립 7% → 체감가 29,700원 (목표가 30,000원 초과, 절상)"}]},
-  {id:"1-2",g:"#1 정상 적용",t:"기존 적용 혜택 없음 & 우위 목표",c:12000,ss:{im:13000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:12610,ir:"4.84%",v:[{tp:"쿠폰",r:"0~10%",gl:"우위 5%",br:"쿠폰 10%",ex:"쿠폰 10% → 체감가 11,349원 (우위목표가 11,400원 미만, 절하)"},{tp:"적립",r:"0~10%",gl:"우위 5%",br:"적립 10%",ex:"적립 10% → 체감가 11,310원 (우위목표가 11,400원 미만, 절하)"}]},
-  {id:"1-3",g:"#1 정상 적용",t:"기존 적용 혜택 없음 & 배송비 있음 & 동등 목표",c:20000,ss:{im:21000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:2000},sp:22370,ir:"10.59%",v:[{tp:"쿠폰",r:"0~15%",gl:"동등",br:"쿠폰 12%",ex:"쿠폰 12% → 체감가 19,925원 (목표가 20,000원 초과, 절상)"},{tp:"적립",r:"0~15%",gl:"동등",br:"적립 12%",ex:"적립 12% → 체감가 19,850원 (목표가 20,000원 초과, 절상)"}]},
-  {id:"1-4",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (상품중복할인) & 우위 목표",c:45000,ss:{im:50000,pd:0,dd:2500,cd:0,ap:0,sp:0,dv:0},sp:46075,ir:"2.33%",nt:"적립기준가 = 50,000 - 2,500 = 47,500 기준 계산",v:[{tp:"쿠폰",r:"0~10%",gl:"우위 2%",br:"쿠폰 5%",ex:"쿠폰 5% → 체감가 43,650원 (우위목표가 44,100원 미만, 절하)"},{tp:"적립",r:"0~10%",gl:"우위 2%",br:"적립 5%",ex:"적립 5% → 체감가 43,700원 (우위목표가 44,100원 미만, 절하)"}]},
-  {id:"1-5",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (스토어장바구니할인) & 동등 목표",c:54000,ss:{im:63000,pd:0,dd:0,cd:6300,ap:0,sp:0,dv:1000},sp:55999,ir:"3.57%",v:[{tp:"쿠폰",r:"0~10%",gl:"동등",br:"쿠폰 4%",ex:"쿠폰 4% → 체감가 53,554원 (목표가 54,000원 초과, 절상)"},{tp:"적립",r:"0~10%",gl:"동등",br:"적립 4%",ex:"적립 4% → 체감가 53,731원 (목표가 54,000원 초과, 절상)"}]},
-  {id:"1-6",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (상품할인-관리자) & 우위 목표",c:53000,ss:{im:63000,pd:3150,dd:0,cd:0,ap:0,sp:0,dv:0},sp:58055,ir:"8.71%",nt:"⚠️ 쿠폰: 다프 쿠폰도 관리자 상품할인 쿠폰 → 기존 5% 탈락 후 다프 쿠폰 단독 적용",v:[{tp:"쿠폰",r:"0~10%",gl:"우위 3%",br:"쿠폰 16%",ex:"쿠폰 16% → 체감가 51,333원 (기존 상품할인 5% 탈락 후 다프 16% 단독 적용, 절하)"},{tp:"적립",r:"0~10%",gl:"우위 3%",br:"적립 12%",ex:"적립 12% → 체감가 50,873원 (우위목표가 51,410원 미만, 절하)"}]},
-  {id:"1-7",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (관리자 추가적립) & 우위 목표",c:53000,ss:{im:63000,pd:0,dd:0,cd:0,ap:3150,sp:0,dv:1000},sp:58960,ir:"10.11%",v:[{tp:"쿠폰",r:"0~13%",gl:"우위 2%",br:"쿠폰 13%",ex:"쿠폰 13% → 체감가 51,425원 (우위목표가 51,940원 미만, 절하)"},{tp:"적립",r:"0~13%",gl:"우위 2%",br:"적립 12%",ex:"적립 12% (다프) 추가 → 체감가 51,400원 (우위목표가 51,940원 미만, 절하)"}]},
-  {id:"1-8",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (판매자 추가적립) & 동등 목표",c:77000,ss:{im:81000,pd:0,dd:0,cd:0,ap:2430,sp:0,dv:3000},sp:79140,ir:"2.70%",v:[{tp:"쿠폰",r:"0~10%",gl:"동등",br:"쿠폰 3%",ex:"쿠폰 3% → 체감가 76,855원 (목표가 77,000원 초과, 절상)"},{tp:"적립",r:"0~10%",gl:"동등",br:"적립 3%",ex:"적립 3% (다프) 추가 → 체감가 76,710원 (목표가 77,000원 초과, 절상)"}]},
-  {id:"1-9",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (슈퍼적립) & 우위 목표",c:71000,ss:{im:81000,pd:0,dd:0,cd:0,ap:0,sp:8100,dv:3000},sp:73470,ir:"3.36%",v:[{tp:"쿠폰",r:"0~5%",gl:"우위 3%",br:"쿠폰 7%",ex:"쿠폰 7% → 체감가 68,538원 (우위목표가 68,870원 미만, 절하)"},{tp:"적립",r:"0~5%",gl:"우위 3%",br:"적립 6%",ex:"적립 6% (다프) 추가 → 체감가 68,610원 (우위목표가 68,870원 미만, 절하)"}]},
-  {id:"1-10",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (상품중복할인+슈퍼적립) & 우위 목표",c:60000,ss:{im:75000,pd:0,dd:3750,cd:0,ap:0,sp:7125,dv:0},sp:61987,ir:"3.20%",nt:"적립기준가 = 75,000 - 3,750 = 71,250 기준 계산",v:[{tp:"쿠폰",r:"0~10%",gl:"우위 3%",br:"쿠폰 6%",ex:"쿠폰 6% → 체감가 58,072원 (우위목표가 58,200원 미만, 절하)"},{tp:"적립",r:"0~10%",gl:"우위 3%",br:"적립 6%",ex:"적립 6% (다프) 추가 → 체감가 57,712원 (우위목표가 58,200원 미만, 절하)"}]},
-  {id:"2-1",g:"#2 미적용",t:"경쟁사 가격 전파 지연",c:null,ss:{im:13000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:12610,ir:"-",nt:"제플린 '열위종료' 필드로 유효기간 확인",v:[{tp:"쿠폰 또는 적립",r:"0~10%",gl:"우위 5%",br:"미적용",ex:"유효기간(계산완료+주기+1h) 경과 후 혜택 미적용 확인"}]},
-  {id:"2-2",g:"#2 미적용",t:"상품 모니터링에서 제외",c:12000,ss:{im:13000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:12610,ir:"4.84%",v:[{tp:"쿠폰 또는 적립",r:"0~10%",gl:"우위 5%",br:"미적용",ex:"모니터링 그룹에서 상품 삭제 → 유효기간 경과 후 혜택 미적용"}]},
-  {id:"2-3",g:"#2 미적용",t:"최소 열위비율 미만",c:71000,ss:{im:81000,pd:0,dd:0,cd:0,ap:0,sp:8100,dv:3000},sp:73470,ir:"3.36%",nt:"경계값 검증: 열위비율 = 최소(5%)와 같은 경우는 적용되어야 함",v:[{tp:"쿠폰 또는 적립",r:"5~10%",gl:"우위 3%",br:"미적용",ex:"열위비율 3.36% < 최소 5% → 구간 미달로 혜택 미적용"}]},
-  {id:"2-4",g:"#2 미적용",t:"최대 열위비율 초과",c:25000,ss:{im:27000,pd:0,dd:0,cd:0,ap:0,sp:2700,dv:3000},sp:27300,ir:"8.79%",nt:"경계값 검증: 열위비율 = 최대(5%)와 같은 경우는 적용되어야 함",v:[{tp:"쿠폰 또는 적립",r:"0~5%",gl:"동등",br:"미적용",ex:"열위비율 8.79% > 최대 5% → 구간 초과로 혜택 미적용"}]},
-  {id:"2-5",g:"#2 미적용",t:"혜택 적용 비율 초과 (20% 초과)",c:72000,ss:{im:100000,pd:0,dd:5000,cd:5000,ap:0,sp:0,dv:0},sp:87300,ir:"17.53%",nt:"우위목표가 68,400원 / 19% 체감가 68,870(미달) → 21% 필요",v:[{tp:"쿠폰 또는 적립",r:"10~20%",gl:"우위 5%",br:"미적용",ex:"구간 내(17.53%)이나 목표 달성 필요 비율 21% → 20% 초과로 혜택 미적용"}]},
-  {id:"3-1",g:"#3 혜택 2개",t:"다프 쿠폰 2개 등록",c:53000,ss:{im:63000,pd:0,dd:0,cd:0,ap:4410,sp:0,dv:1000},sp:57700,ir:"8.15%",v:[{tp:"쿠폰A(5~10%/우위7%) + 쿠폰B(10~20%/우위10%)",r:"-",gl:"-",br:"쿠폰A 14%",ex:"열위비율 8.15% → 쿠폰A 구간만 해당 → 쿠폰A 14% 단독 적용"}]},
-  {id:"3-2",g:"#3 혜택 2개",t:"다프 적립 2개 등록",c:53000,ss:{im:63000,pd:0,dd:0,cd:0,ap:4410,sp:0,dv:1000},sp:57700,ir:"8.15%",v:[{tp:"적립A(0~20%/우위7%) + 적립B(0~20%/우위10%)",r:"-",gl:"-",br:"적립B 15%",ex:"A·B 모두 구간 내 → 더 높은 혜택 그룹B 선택 → 적립B 15% 적용"}]},
-  {id:"3-3",g:"#3 혜택 2개",t:"다프 쿠폰+적립 → 쿠폰만 적용",c:53000,ss:{im:63000,pd:3130,dd:0,cd:0,ap:4189,sp:0,dv:1000},sp:54866,ir:"3.40%",v:[{tp:"쿠폰(5~15%/우위3%) + 적립(1~10%/우위1%)",r:"-",gl:"-",br:"쿠폰 15%",ex:"쿠폰 15% 후 체감가 51,869 → 적립 목표 이미 달성 → 적립 미적용"}]},
-  {id:"3-4",g:"#3 혜택 2개",t:"다프 쿠폰+적립 → 적립만 적용",c:53000,ss:{im:63000,pd:3330,dd:0,cd:0,ap:3158,sp:0,dv:1000},sp:57855,ir:"8.39%",v:[{tp:"쿠폰(1~5%/우위3%) + 적립(0~10%/우위1%)",r:"-",gl:"-",br:"적립 8%",ex:"쿠폰 열위구간 미해당 → 미적용 / 적립 8% 단독 적용"}]},
-  {id:"3-5",g:"#3 혜택 2개",t:"다프 쿠폰+적립 → 둘 다 적용",c:53000,ss:{im:63000,pd:3330,dd:0,cd:0,ap:3158,sp:0,dv:1000},sp:57855,ir:"8.39%",v:[{tp:"쿠폰(5~15%/우위3%) + 적립(1~10%/우위7%)",r:"-",gl:"-",br:"쿠폰 15% + 적립 4%",ex:"쿠폰 15% 적용(51,869) → 적립 목표 미달 → 적립 4% 추가 적용"}]},
+  // ── #1 정상 적용 ──────────────────────────────────────────────────────
+  {id:"1-1",g:"#1 정상 적용",t:"기존 적용 혜택 없음 & 동등 목표",
+   c:30000,ss:{im:33000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:32010,ir:"6.28%",
+   v:[{tp:"쿠폰",r:"0~15%",gl:"동등",pn:"쿠폰-1",br:"쿠폰 7%",ex:"쿠폰 7% → 체감가 29,769원 (목표가 30,000원 초과, 절상)"},
+      {tp:"적립",r:"0~15%",gl:"동등",pn:"적립-1",br:"적립 7%",ex:"적립 7% → 체감가 29,700원 (목표가 30,000원 초과, 절상)"}]},
+  {id:"1-2",g:"#1 정상 적용",t:"기존 적용 혜택 없음 & 우위 목표",
+   c:12000,ss:{im:13000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:12610,ir:"4.84%",
+   v:[{tp:"쿠폰",r:"0~10%",gl:"우위 5%",pn:"쿠폰-4",br:"쿠폰 10%",ex:"쿠폰 10% → 체감가 11,349원 (우위목표가 11,400원 미만, 절하)"},
+      {tp:"적립",r:"0~10%",gl:"우위 5%",pn:"적립-4",br:"적립 10%",ex:"적립 10% → 체감가 11,310원 (우위목표가 11,400원 미만, 절하)"}]},
+  {id:"1-3",g:"#1 정상 적용",t:"기존 적용 혜택 없음 & 배송비 있음 & 동등 목표",
+   c:20000,ss:{im:21000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:2000},sp:22370,ir:"10.59%",
+   v:[{tp:"쿠폰",r:"0~15%",gl:"동등",pn:"쿠폰-1",br:"쿠폰 12%",ex:"쿠폰 12% → 체감가 19,925원 (목표가 20,000원 초과, 절상)"},
+      {tp:"적립",r:"0~15%",gl:"동등",pn:"적립-1",br:"적립 12%",ex:"적립 12% → 체감가 19,850원 (목표가 20,000원 초과, 절상)"}]},
+  {id:"1-4",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (상품중복할인) & 우위 목표",
+   c:45000,ss:{im:50000,pd:0,dd:2500,cd:0,ap:0,sp:0,dv:0},sp:46075,ir:"2.33%",
+   nt:"적립기준가 = 50,000 - 2,500 = 47,500 기준 계산",
+   v:[{tp:"쿠폰",r:"0~13%",gl:"우위 2%",pn:"쿠폰-2",br:"쿠폰 5%",ex:"쿠폰 5% → 체감가 43,650원 (우위목표가 44,100원 미만, 절하)"},
+      {tp:"적립",r:"0~13%",gl:"우위 2%",pn:"적립-2",br:"적립 5%",ex:"적립 5% → 체감가 43,700원 (우위목표가 44,100원 미만, 절하)"}]},
+  {id:"1-5",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (스토어장바구니할인) & 동등 목표",
+   c:54000,ss:{im:63000,pd:0,dd:0,cd:6300,ap:0,sp:0,dv:1000},sp:55999,ir:"3.57%",
+   v:[{tp:"쿠폰",r:"0~15%",gl:"동등",pn:"쿠폰-1",br:"쿠폰 4%",ex:"쿠폰 4% → 체감가 53,554원 (목표가 54,000원 초과, 절상)"},
+      {tp:"적립",r:"0~15%",gl:"동등",pn:"적립-1",br:"적립 4%",ex:"적립 4% → 체감가 53,731원 (목표가 54,000원 초과, 절상)"}]},
+  {id:"1-6",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (상품할인-관리자) & 우위 목표",
+   c:53000,ss:{im:63000,pd:3150,dd:0,cd:0,ap:0,sp:0,dv:0},sp:58055,ir:"8.71%",
+   nt:"⚠️ 쿠폰: 다프 쿠폰도 관리자 상품할인 쿠폰 → 기존 5% 탈락 후 다프 쿠폰 단독 적용",
+   v:[{tp:"쿠폰",r:"0~10%",gl:"우위 3%",pn:"쿠폰-3",br:"쿠폰 16%",ex:"쿠폰 16% → 체감가 51,333원 (기존 상품할인 5% 탈락 후 다프 16% 단독 적용, 절하)"},
+      {tp:"적립",r:"0~10%",gl:"우위 3%",pn:"적립-3",br:"적립 12%",ex:"적립 12% → 체감가 50,873원 (우위목표가 51,410원 미만, 절하)"}]},
+  {id:"1-7",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (관리자 추가적립) & 우위 목표",
+   c:53000,ss:{im:63000,pd:0,dd:0,cd:0,ap:3150,sp:0,dv:1000},sp:58960,ir:"10.11%",
+   v:[{tp:"쿠폰",r:"0~13%",gl:"우위 2%",pn:"쿠폰-2",br:"쿠폰 13%",ex:"쿠폰 13% → 체감가 51,425원 (우위목표가 51,940원 미만, 절하)"},
+      {tp:"적립",r:"0~13%",gl:"우위 2%",pn:"적립-2",br:"적립 12%",ex:"적립 12% (다프) 추가 → 체감가 51,400원 (우위목표가 51,940원 미만, 절하)"}]},
+  {id:"1-8",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (판매자 추가적립) & 동등 목표",
+   c:77000,ss:{im:81000,pd:0,dd:0,cd:0,ap:2430,sp:0,dv:3000},sp:79140,ir:"2.70%",
+   v:[{tp:"쿠폰",r:"0~10%",gl:"동등",pn:"쿠폰-4",br:"쿠폰 3%",ex:"쿠폰 3% → 체감가 76,855원 (목표가 77,000원 초과, 절상)"},
+      {tp:"적립",r:"0~15%",gl:"동등",pn:"적립-1",br:"적립 3%",ex:"적립 3% (다프) 추가 → 체감가 76,710원 (목표가 77,000원 초과, 절상)"}]},
+  {id:"1-9",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (슈퍼적립) & 우위 목표",
+   c:71000,ss:{im:81000,pd:0,dd:0,cd:0,ap:0,sp:8100,dv:3000},sp:73470,ir:"3.36%",
+   v:[{tp:"쿠폰",r:"0~5%",gl:"우위 3%",pn:"쿠폰-5",br:"쿠폰 7%",ex:"쿠폰 7% → 체감가 68,538원 (우위목표가 68,870원 미만, 절하)"},
+      {tp:"적립",r:"0~5%",gl:"우위 3%",pn:"적립-5",br:"적립 6%",ex:"적립 6% (다프) 추가 → 체감가 68,610원 (우위목표가 68,870원 미만, 절하)"}]},
+  {id:"1-10",g:"#1 정상 적용",t:"기존 적용 혜택 있음 (상품중복할인+슈퍼적립) & 우위 목표",
+   c:60000,ss:{im:75000,pd:0,dd:3750,cd:0,ap:0,sp:7125,dv:0},sp:61987,ir:"3.20%",
+   nt:"적립기준가 = 75,000 - 3,750 = 71,250 기준 계산",
+   v:[{tp:"쿠폰",r:"0~10%",gl:"우위 3%",pn:"쿠폰-3",br:"쿠폰 6%",ex:"쿠폰 6% → 체감가 58,072원 (우위목표가 58,200원 미만, 절하)"},
+      {tp:"적립",r:"0~10%",gl:"우위 3%",pn:"적립-3",br:"적립 6%",ex:"적립 6% (다프) 추가 → 체감가 57,712원 (우위목표가 58,200원 미만, 절하)"}]},
+  // ── #2 미적용 ──────────────────────────────────────────────────────────
+  {id:"2-1",g:"#2 미적용",t:"경쟁사 가격 전파 지연",
+   c:null,ss:{im:13000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:12610,ir:"-",
+   nt:"제플린 '열위종료' 필드로 유효기간 확인",
+   v:[{tp:"쿠폰 또는 적립",r:"0~10%",gl:"우위 5%",pn:"쿠폰-4 or 적립-4",br:"미적용",ex:"유효기간(계산완료+주기+1h) 경과 후 혜택 미적용 확인"}]},
+  {id:"2-2",g:"#2 미적용",t:"상품 모니터링에서 제외",
+   c:12000,ss:{im:13000,pd:0,dd:0,cd:0,ap:0,sp:0,dv:0},sp:12610,ir:"4.84%",
+   v:[{tp:"쿠폰 또는 적립",r:"0~10%",gl:"우위 5%",pn:"쿠폰-4 or 적립-4",br:"미적용",ex:"모니터링 그룹에서 상품 삭제 → 유효기간 경과 후 혜택 미적용"}]},
+  {id:"2-3",g:"#2 미적용",t:"최소 열위비율 미만",
+   c:71000,ss:{im:81000,pd:0,dd:0,cd:0,ap:0,sp:8100,dv:3000},sp:73470,ir:"3.36%",
+   nt:"경계값 검증: 열위비율 = 최소(5%)와 같은 경우는 적용되어야 함",
+   v:[{tp:"쿠폰 또는 적립",r:"5~10%",gl:"우위 3%",pn:"쿠폰-6 or 적립-6",br:"미적용",ex:"열위비율 3.36% < 최소 5% → 구간 미달로 혜택 미적용"}]},
+  {id:"2-4",g:"#2 미적용",t:"최대 열위비율 초과",
+   c:25000,ss:{im:27000,pd:0,dd:0,cd:0,ap:0,sp:2700,dv:3000},sp:27300,ir:"8.79%",
+   nt:"경계값 검증: 열위비율 = 최대(5%)와 같은 경우는 적용되어야 함",
+   v:[{tp:"쿠폰 또는 적립",r:"0~5%",gl:"동등",pn:"쿠폰-7 or 적립-7",br:"미적용",ex:"열위비율 8.79% > 최대 5% → 구간 초과로 혜택 미적용"}]},
+  {id:"2-5",g:"#2 미적용",t:"혜택 적용 비율 초과 (20% 초과)",
+   c:72000,ss:{im:100000,pd:0,dd:5000,cd:5000,ap:0,sp:0,dv:0},sp:87300,ir:"17.53%",
+   nt:"우위목표가 68,400원 / 19% 체감가 68,870(미달) → 21% 필요",
+   v:[{tp:"쿠폰 또는 적립",r:"10~20%",gl:"우위 5%",pn:"쿠폰-8 or 적립-8",br:"미적용",ex:"구간 내(17.53%)이나 목표 달성 필요 비율 21% → 20% 초과로 혜택 미적용"}]},
+  // ── #3 혜택 2개 ────────────────────────────────────────────────────────
+  {id:"3-1",g:"#3 혜택 2개",t:"다프 쿠폰 2개 등록",
+   c:53000,ss:{im:63000,pd:0,dd:0,cd:0,ap:4410,sp:0,dv:1000},sp:57700,ir:"8.15%",
+   v:[{tp:"쿠폰A(5~10%/우위7%) + 쿠폰B(10~20%/우위5%)",r:"-",gl:"-",pn:"쿠폰-10 + 쿠폰-8",br:"쿠폰A 14%",ex:"열위비율 8.15% → 쿠폰A(5~10%) 구간만 해당 → 쿠폰A 14% 단독 적용"}]},
+  {id:"3-2",g:"#3 혜택 2개",t:"다프 적립 2개 등록",
+   c:53000,ss:{im:63000,pd:0,dd:0,cd:0,ap:4410,sp:0,dv:1000},sp:57700,ir:"8.15%",
+   v:[{tp:"적립A(0~20%/우위7%) + 적립B(0~20%/우위10%)",r:"-",gl:"-",pn:"적립-9 + 적립-10",br:"적립B 15%",ex:"A·B 모두 구간 내 → 더 높은 혜택 그룹B(우위10%) 선택 → 적립B 15% 적용"}]},
+  {id:"3-3",g:"#3 혜택 2개",t:"다프 쿠폰+적립 → 쿠폰만 적용",
+   c:53000,ss:{im:63000,pd:3130,dd:0,cd:0,ap:4189,sp:0,dv:1000},sp:54866,ir:"3.40%",
+   v:[{tp:"쿠폰(5~15%/우위3%) + 적립(0~20%/우위7%)",r:"-",gl:"-",pn:"쿠폰-9 + 적립-9",br:"쿠폰 15%",ex:"쿠폰 15% 후 체감가 51,869 → 적립 목표 이미 달성 → 적립 미적용"}]},
+  {id:"3-4",g:"#3 혜택 2개",t:"다프 쿠폰+적립 → 적립만 적용",
+   c:53000,ss:{im:63000,pd:3330,dd:0,cd:0,ap:3158,sp:0,dv:1000},sp:57855,ir:"8.39%",
+   nt:"쿠폰 열위구간(10~20%) 미해당(8.39%) → 쿠폰 미적용 / 적립 구간(5~10%) 해당 → 적립 단독 적용",
+   v:[{tp:"쿠폰(10~20%/우위5%) + 적립(5~10%/우위3%)",r:"-",gl:"-",pn:"쿠폰-8 + 적립-6",br:"적립 8%",ex:"쿠폰 열위구간(10~20%) 미해당 → 미적용 / 적립 8% 단독 적용"}]},
+  {id:"3-5",g:"#3 혜택 2개",t:"다프 쿠폰+적립 → 둘 다 적용",
+   c:53000,ss:{im:63000,pd:3330,dd:0,cd:0,ap:3158,sp:0,dv:1000},sp:57855,ir:"8.39%",
+   v:[{tp:"쿠폰(5~15%/우위3%) + 적립(0~20%/우위7%)",r:"-",gl:"-",pn:"쿠폰-9 + 적립-9",br:"쿠폰 15% + 적립 4%",ex:"쿠폰 15% 적용(51,869) → 적립 목표 미달 → 적립 4% 추가 적용"}]},
 ];
+
 const SO=["미진행","진행중","통과 ✅","실패 ❌","블로킹 🚫"];
 const SC={"미진행":"bg-gray-100 text-gray-500","진행중":"bg-blue-100 text-blue-700","통과 ✅":"bg-green-100 text-green-700","실패 ❌":"bg-red-100 text-red-700","블로킹 🚫":"bg-yellow-100 text-yellow-700"};
 const GR=[...new Set(TC.map(t=>t.g))];
@@ -60,6 +131,7 @@ const kst=()=>new Date(Date.now()+9*60*60*1000).toISOString().slice(0,16);
 const ck=(id,vi)=>id+"__"+vi;
 const ef=()=>({st:"미진행",ta:"",abr:"",asp:"",ar:"",mo:""});
 const pts=ss=>{const b=ss.im-ss.pd-ss.dd-ss.cd;return{ba:Math.floor(b*.01),me:Math.floor(b*.02)};};
+
 function App(){
   const[sel,setSel]=useState(TC[0]);
   const[vi,setVi]=useState(0);
@@ -73,6 +145,7 @@ function App(){
   const[sc,setSc]=useState({});
   const fr=useRef();
   const key=ck(sel.id,vi);
+
   useEffect(()=>{
     setLoaded(false);setSnaps([]);setForm(ef());setImgs([]);
     api.getRecords(key).then(rows=>{
@@ -85,6 +158,7 @@ function App(){
       setLoaded(true);setMsg("✅ 로드됨");setTimeout(()=>setMsg(""),1500);
     }).catch(()=>{setLoaded(true);setMsg("⚠️ 로드 실패");});
   },[key]);
+
   const addSnap=async()=>{
     setSaving(true);
     const urls=imgs.filter(i=>!i.up).map(i=>i.url).filter(Boolean).join(",");
@@ -93,11 +167,14 @@ function App(){
     if(Array.isArray(rows)&&rows[0]){setSnaps(p=>[rows[0],...p]);setSc(p=>({...p,[key]:form.st}));}
     setSaving(false);setMsg("💾 기록 저장됨");setTimeout(()=>setMsg(""),1500);
   };
+
   const delSnap=async id=>{
     await api.deleteRecord(id);
     setSnaps(p=>{const n=p.filter(s=>s.id!==id);setSc(c=>({...c,[key]:n[0]?.status??"미진행"}));return n;});
   };
+
   const upd=(f,v)=>setForm(p=>({...p,[f]:v}));
+
   const handleImgs=e=>{
     Array.from(e.target.files).forEach(async file=>{
       const tid=Date.now()+Math.random();
@@ -113,22 +190,26 @@ function App(){
     });
     e.target.value="";
   };
+
   const rmImg=async img=>{
     setImgs(p=>p.filter(i=>i.tid!==img.tid));
     if(img.path)await api.deleteImage(img.path);
   };
+
   const v=sel.v[vi];
   const p=pts(sel.ss);
   const gst=tc=>{const ss=tc.v.map((_,i)=>sc[ck(tc.id,i)]??"미진행");return ss.includes("실패 ❌")?"실패 ❌":ss.includes("블로킹 🚫")?"블로킹 🚫":ss.includes("진행중")?"진행중":ss.every(s=>s==="통과 ✅")?"통과 ✅":"미진행";};
   const done=TC.filter(tc=>gst(tc)==="통과 ✅").length;
+
   const S=(l,vl,ac)=><div style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}><span style={{fontSize:"11px",color:"#6b7280"}}>{l}</span><span style={{fontSize:"11px",fontWeight:"800",color:ac?"#dc2626":"#111827"}}>{vl}</span></div>;
   const ST=(l,vl)=><div><div style={{fontSize:"11px",color:"#93c5fd"}}>{l}</div><div style={{fontWeight:"800",color:"#1e3a8a",fontSize:"15px"}}>{vl}</div></div>;
+
   return(
     <div style={{fontFamily:"'Nanum Gothic',sans-serif",height:"100vh",display:"flex",background:"#f9fafb",fontSize:"14px"}}>
       <div style={{width:sb?"288px":"0",overflow:"hidden",transition:"width 0.2s",background:"white",borderRight:"1px solid #e5e7eb",display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{padding:"16px",background:"linear-gradient(to right,#16a34a,#10b981)"}}>
           <div style={{color:"white",fontWeight:"800",fontSize:"15px"}}>🧪 다프 테스트 트래커</div>
-          <div style={{color:"#bbf7d0",fontSize:"11px",marginTop:"2px"}}>Supabase 실시간 연동</div>
+          <div style={{color:"#bbf7d0",fontSize:"11px",marginTop:"2px"}}>쿠폰 10개 / 적립 10개 정책</div>
           <div style={{color:"#bbf7d0",fontSize:"11px",marginTop:"4px"}}>{done}/{TC.length} 완료</div>
           <div style={{marginTop:"8px",background:"#166534",borderRadius:"9999px",height:"6px"}}><div style={{background:"white",borderRadius:"9999px",height:"6px",width:(done/TC.length*100)+"%",transition:"width 0.3s"}}/></div>
         </div>
@@ -138,7 +219,7 @@ function App(){
               <div style={{padding:"6px 12px",fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase"}}>{g}</div>
               {TC.filter(tc=>tc.g===g).map(tc=>{
                 const st=gst(tc);
-                return(<button key={tc.id} onClick={()=>{setSel(tc);setVi(0);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderLeft:"2px solid "+(sel.id===tc.id?"#16a34a":"transparent"),background:sel.id===tc.id?"#f0fdf4":"transparent",border:"none",borderLeft:"2px solid "+(sel.id===tc.id?"#16a34a":"transparent"),cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"4px"}}>
+                return(<button key={tc.id} onClick={()=>{setSel(tc);setVi(0);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:sel.id===tc.id?"#f0fdf4":"transparent",border:"none",borderLeft:"2px solid "+(sel.id===tc.id?"#16a34a":"transparent"),cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"4px"}}>
                   <span style={{fontSize:"11px",color:"#374151",lineHeight:"1.4"}}>[{tc.id}] {tc.t}</span>
                   <span className={"text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 "+SC[st]}>{st==="미진행"?"-":st.split(" ")[1]??st}</span>
                 </button>);
@@ -147,18 +228,25 @@ function App(){
           ))}
         </div>
       </div>
+
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{background:"white",borderBottom:"1px solid #e5e7eb",padding:"10px 16px",display:"flex",alignItems:"center",gap:"12px"}}>
           <button onClick={()=>setSb(s=>!s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"18px",color:"#9ca3af"}}>☰</button>
           <div style={{flex:1}}><div style={{fontWeight:"800",color:"#111827"}}>[{sel.id}] {sel.t}</div><div style={{fontSize:"11px",color:"#9ca3af"}}>{sel.g}</div></div>
           {(saving||msg)&&<span style={{fontSize:"11px",padding:"2px 8px",borderRadius:"9999px",background:saving?"#eff6ff":"#f0fdf4",color:saving?"#3b82f6":"#16a34a"}}>{saving?"💾 저장 중...":msg}</span>}
         </div>
+
         <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:"12px"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"12px"}}>
             <div style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"16px"}}>
               <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",marginBottom:"8px"}}>혜택 정책</div>
               {sel.v.length>1&&<div style={{display:"flex",gap:"4px",marginBottom:"12px"}}>{sel.v.map((vv,i)=><button key={i} onClick={()=>setVi(i)} style={{flex:1,padding:"4px",borderRadius:"8px",fontSize:"11px",fontWeight:"800",border:"1px solid "+(vi===i?"#16a34a":"#e5e7eb"),background:vi===i?"#16a34a":"white",color:vi===i?"white":"#6b7280",cursor:"pointer"}}>{vv.tp.length>5?vv.tp.slice(0,3)+"…":vv.tp}</button>)}</div>}
-              {S("유형",v.tp)}{S("열위 구간",v.r??"-")}{S("목표",v.gl)}
+              {S("유형",v.tp)}
+              {S("열위 구간",v.r??"-")}
+              {S("목표",v.gl)}
+              <div style={{marginTop:"6px",paddingTop:"6px",borderTop:"1px solid #f3f4f6"}}>
+                <span style={{fontSize:"10px",background:"#f0fdf4",color:"#16a34a",padding:"2px 6px",borderRadius:"4px",fontWeight:"800"}}>📋 {v.pn}</span>
+              </div>
             </div>
             <div style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"16px"}}>
               <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",marginBottom:"8px"}}>경쟁사 가격</div>
@@ -177,6 +265,7 @@ function App(){
               {S("배송비",fmt(sel.ss.dv)+"원")}
             </div>
           </div>
+
           <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"12px",padding:"16px"}}>
             <div style={{fontSize:"11px",fontWeight:"800",color:"#93c5fd",textTransform:"uppercase",marginBottom:"8px"}}>계산결과 (기대값)</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"16px",marginBottom:"8px"}}>
@@ -188,6 +277,7 @@ function App(){
               {sel.nt&&<div style={{fontSize:"11px",color:"#3b82f6",marginTop:"4px"}}>📌 {sel.nt}</div>}
             </div>
           </div>
+
           <div style={{background:"white",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"16px",display:"flex",flexDirection:"column",gap:"12px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase"}}>테스트 기록 입력</div>
@@ -229,6 +319,7 @@ function App(){
               <input ref={fr} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImgs}/>
             </div>
           </div>
+
           {!loaded?(
             <div style={{textAlign:"center",padding:"16px",color:"#9ca3af",fontSize:"12px"}}>기록 불러오는 중...</div>
           ):snaps.length===0?(
