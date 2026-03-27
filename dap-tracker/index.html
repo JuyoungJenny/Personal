@@ -28,6 +28,20 @@ const api = {
     fetch(`${SB_URL}/rest/v1/test_records`, { method: "POST", headers: HR, body: JSON.stringify(row) }).then(r => r.json()),
   deleteRecord: (id) =>
     fetch(`${SB_URL}/rest/v1/test_records?id=eq.${id}`, { method: "DELETE", headers: H }),
+  uploadImage: async (file, path) => {
+    const res = await fetch(`${SB_URL}/storage/v1/object/test-images/${path}`, {
+      method: "POST",
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return `${SB_URL}/storage/v1/object/public/test-images/${path}`;
+  },
+  deleteImage: (path) =>
+    fetch(`${SB_URL}/storage/v1/object/test-images/${path}`, {
+      method: "DELETE",
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    }),
 };
 
 const TEST_CASES = [
@@ -164,7 +178,7 @@ function App() {
   const [saving, setSaving]   = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
   const [loaded, setLoaded]   = useState(false);
-  const [images, setImages]   = useState([]);
+  const [images, setImages]       = useState([]); // {name, url, path, uploading}
   const [statusCache, setStatusCache] = useState({});
   const fileRef = useRef();
 
@@ -185,7 +199,8 @@ function App() {
 
   const addSnapshot = async () => {
     setSaving(true);
-    const row = { case_id:ck, status:form.status, tested_at:form.testedAt||nowKST(), actual_benefit_rate:form.actualBenefitRate, actual_sensed_price:form.actualSensedPrice, actual_result:form.actualResult, memo:form.memo };
+    const imageUrls = images.filter(i => !i.uploading).map(i => i.url).join(',');
+    const row = { case_id:ck, status:form.status, tested_at:form.testedAt||nowKST(), actual_benefit_rate:form.actualBenefitRate, actual_sensed_price:form.actualSensedPrice, actual_result:form.actualResult, memo:form.memo, image_urls: imageUrls || null };
     const rows = await api.addRecord(row);
     if (Array.isArray(rows) && rows[0]) { setSnaps(p => [rows[0],...p]); setStatusCache(p => ({...p,[ck]:form.status})); }
     setSaving(false); setSyncMsg("💾 기록 저장됨"); setTimeout(() => setSyncMsg(""), 1500);
@@ -197,7 +212,26 @@ function App() {
   };
 
   const upd = (f,v) => setForm(p => ({...p,[f]:v}));
-  const handleImages = e => { Array.from(e.target.files).forEach(f => { const r=new FileReader(); r.onload=ev=>setImages(p=>[...p,{name:f.name,src:ev.target.result}]); r.readAsDataURL(f); }); e.target.value=""; };
+  const handleImages = e => {
+    Array.from(e.target.files).forEach(async file => {
+      const tempId = Date.now() + Math.random();
+      const path = `${ck}/${tempId}_${file.name}`;
+      // 로딩 상태로 먼저 추가
+      setImages(prev => [...prev, { tempId, name: file.name, url: URL.createObjectURL(file), path, uploading: true }]);
+      try {
+        const url = await api.uploadImage(file, path);
+        setImages(prev => prev.map(img => img.tempId === tempId ? { ...img, url, uploading: false } : img));
+      } catch (e) {
+        setImages(prev => prev.filter(img => img.tempId !== tempId));
+        alert('이미지 업로드 실패: ' + e.message);
+      }
+    });
+    e.target.value = "";
+  };
+  const removeImage = async (img) => {
+    setImages(prev => prev.filter(i => i.tempId !== img.tempId));
+    if (img.path) await api.deleteImage(img.path);
+  };
 
   const pts = calcPts(sel.ss);
   const variant = sel.variants[varIdx];
@@ -345,9 +379,10 @@ function App() {
               <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>스크린샷 <span style={{color:"#9ca3af"}}>(이 기기에서만 보임)</span></label>
               <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
                 {images.map((img,i)=>(
-                  <div key={i} style={{position:"relative",width:"80px",height:"80px",borderRadius:"8px",overflow:"hidden",border:"1px solid #e5e7eb"}}>
-                    <img src={img.src} alt={img.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                    <button onClick={()=>setImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:"2px",right:"2px",background:"#ef4444",color:"white",border:"none",borderRadius:"9999px",width:"16px",height:"16px",fontSize:"10px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                  <div key={img.tempId ?? i} style={{position:"relative",width:"80px",height:"80px",borderRadius:"8px",overflow:"hidden",border:"1px solid #e5e7eb"}}>
+                    <img src={img.url} alt={img.name} style={{width:"100%",height:"100%",objectFit:"cover",opacity:img.uploading?0.5:1}}/>
+                    {img.uploading && <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px"}}>⏳</div>}
+                    {!img.uploading && <button onClick={()=>removeImage(img)} style={{position:"absolute",top:"2px",right:"2px",background:"#ef4444",color:"white",border:"none",borderRadius:"9999px",width:"16px",height:"16px",fontSize:"10px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>}
                   </div>
                 ))}
                 <button onClick={()=>fileRef.current.click()} style={{width:"80px",height:"80px",borderRadius:"8px",border:"2px dashed #d1d5db",background:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#9ca3af",gap:"4px"}}>
@@ -391,6 +426,15 @@ function App() {
                       )}
                       {snap.actual_result&&<div style={{fontSize:"12px",color:"#374151",background:"white",borderRadius:"6px",padding:"6px 8px",border:"1px solid #f3f4f6",marginBottom:"4px"}}><span style={{color:"#9ca3af",marginRight:"4px"}}>결과</span>{snap.actual_result}</div>}
                       {snap.memo&&<div style={{fontSize:"12px",color:"#6b7280",background:"white",borderRadius:"6px",padding:"6px 8px",border:"1px solid #f3f4f6",marginBottom:"4px"}}><span style={{color:"#9ca3af",marginRight:"4px"}}>메모</span>{snap.memo}</div>}
+                      {snap.image_urls && (
+                        <div style={{display:"flex",flexWrap:"wrap",gap:"6px",marginTop:"6px"}}>
+                          {snap.image_urls.split(',').filter(Boolean).map((url,i)=>(
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                              <img src={url} alt={`스크린샷${i+1}`} style={{width:"72px",height:"72px",objectFit:"cover",borderRadius:"6px",border:"1px solid #e5e7eb"}}/>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                       <div style={{fontSize:"11px",color:"#d1d5db",marginTop:"4px"}}>저장: {new Date(snap.saved_at).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})}</div>
                     </div>
                   </div>
