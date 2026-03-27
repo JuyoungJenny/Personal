@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>다프(NAC) 테스트 트래커</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>* { font-family: 'Nanum Gothic', sans-serif; } body { margin: 0; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const SB_URL = "https://lfkdgpcgxrbicphfkmuj.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxma2RncGNneHJiaWNwaGZrbXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MDQzODMsImV4cCI6MjA5MDA4MDM4M30.h-cDRgpGigYONynscl9RizHK6iQElbyxooZieZnriec";
+const H  = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
+const HR = { ...H, Prefer: "return=representation" };
+
+const api = {
+  getRecords: (caseId) =>
+    fetch(`${SB_URL}/rest/v1/test_records?case_id=eq.${caseId}&order=saved_at.desc`, { headers: H }).then(r => r.json()),
+  addRecord: (row) =>
+    fetch(`${SB_URL}/rest/v1/test_records`, { method: "POST", headers: HR, body: JSON.stringify(row) }).then(r => r.json()),
+  deleteRecord: (id) =>
+    fetch(`${SB_URL}/rest/v1/test_records?id=eq.${id}`, { method: "DELETE", headers: H }),
+};
+
+const TEST_CASES = [
+  { id:"1-1", group:"#1 정상 적용", title:"기존 적용 혜택 없음 & 동등 목표",
+    competitor:30000, ss:{immediate:33000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:32010, inferiorRatio:"6.28%",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"동등", benefitRate:"쿠폰 7%", expected:"쿠폰 7% → 체감가 29,769원 (목표가 30,000원 초과, 절상)" },
+      { type:"적립", range:"0~10%", goal:"동등", benefitRate:"적립 7%", expected:"적립 7% → 체감가 29,700원 (목표가 30,000원 초과, 절상)" },
+    ]},
+  { id:"1-2", group:"#1 정상 적용", title:"기존 적용 혜택 없음 & 우위 목표",
+    competitor:12000, ss:{immediate:13000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:12610, inferiorRatio:"4.84%",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"우위 5%", benefitRate:"쿠폰 10%", expected:"쿠폰 10% → 체감가 11,349원 (우위목표가 11,400원 미만, 절하)" },
+      { type:"적립", range:"0~10%", goal:"우위 5%", benefitRate:"적립 10%", expected:"적립 10% → 체감가 11,310원 (우위목표가 11,400원 미만, 절하)" },
+    ]},
+  { id:"1-3", group:"#1 정상 적용", title:"기존 적용 혜택 없음 & 배송비 있음 & 동등 목표",
+    competitor:20000, ss:{immediate:21000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:0,delivery:2000},
+    sensedPrice:22370, inferiorRatio:"10.59%",
+    variants:[
+      { type:"쿠폰", range:"0~15%", goal:"동등", benefitRate:"쿠폰 12%", expected:"쿠폰 12% → 체감가 19,925원 (목표가 20,000원 초과, 절상)" },
+      { type:"적립", range:"0~15%", goal:"동등", benefitRate:"적립 12%", expected:"적립 12% → 체감가 19,850원 (목표가 20,000원 초과, 절상)" },
+    ]},
+  { id:"1-4", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (상품중복할인) & 우위 목표",
+    competitor:45000, ss:{immediate:50000,productDiscount:0,dupDiscount:2500,cartDiscount:0,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:46075, inferiorRatio:"2.33%", note:"적립기준가 = 50,000 - 2,500 = 47,500 기준 계산",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"우위 2%", benefitRate:"쿠폰 5%", expected:"쿠폰 5% → 체감가 43,650원 (우위목표가 44,100원 미만, 절하)" },
+      { type:"적립", range:"0~10%", goal:"우위 2%", benefitRate:"적립 5%", expected:"적립 5% → 체감가 43,700원 (우위목표가 44,100원 미만, 절하)" },
+    ]},
+  { id:"1-5", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (스토어장바구니할인) & 동등 목표",
+    competitor:54000, ss:{immediate:63000,productDiscount:0,dupDiscount:0,cartDiscount:6300,addPoint:0,superPoint:0,delivery:1000},
+    sensedPrice:55999, inferiorRatio:"3.57%",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"동등", benefitRate:"쿠폰 4%", expected:"쿠폰 4% → 체감가 53,554원 (목표가 54,000원 초과, 절상)" },
+      { type:"적립", range:"0~10%", goal:"동등", benefitRate:"적립 4%", expected:"적립 4% → 체감가 53,731원 (목표가 54,000원 초과, 절상)" },
+    ]},
+  { id:"1-6", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (상품할인-관리자) & 우위 목표",
+    competitor:53000, ss:{immediate:63000,productDiscount:3150,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:58055, inferiorRatio:"8.71%", note:"⚠️ 쿠폰: 다프 쿠폰도 관리자 상품할인 쿠폰 → 기존 5% 탈락 후 다프 쿠폰 단독 적용",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"우위 3%", benefitRate:"쿠폰 16%", expected:"쿠폰 16% → 체감가 51,333원 (기존 상품할인 5% 탈락 후 다프 16% 단독 적용, 절하)" },
+      { type:"적립", range:"0~10%", goal:"우위 3%", benefitRate:"적립 12%", expected:"적립 12% → 체감가 50,873원 (우위목표가 51,410원 미만, 절하)" },
+    ]},
+  { id:"1-7", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (관리자 추가적립) & 우위 목표",
+    competitor:53000, ss:{immediate:63000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:3150,superPoint:0,delivery:1000},
+    sensedPrice:58960, inferiorRatio:"10.11%",
+    variants:[
+      { type:"쿠폰", range:"0~13%", goal:"우위 2%", benefitRate:"쿠폰 13%", expected:"쿠폰 13% → 체감가 51,425원 (우위목표가 51,940원 미만, 절하)" },
+      { type:"적립", range:"0~13%", goal:"우위 2%", benefitRate:"적립 12%", expected:"적립 12% (다프) 추가 → 체감가 51,400원 (우위목표가 51,940원 미만, 절하)" },
+    ]},
+  { id:"1-8", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (판매자 추가적립) & 동등 목표",
+    competitor:77000, ss:{immediate:81000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:2430,superPoint:0,delivery:3000},
+    sensedPrice:79140, inferiorRatio:"2.70%",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"동등", benefitRate:"쿠폰 3%", expected:"쿠폰 3% → 체감가 76,855원 (목표가 77,000원 초과, 절상)" },
+      { type:"적립", range:"0~10%", goal:"동등", benefitRate:"적립 3%", expected:"적립 3% (다프) 추가 → 체감가 76,710원 (목표가 77,000원 초과, 절상)" },
+    ]},
+  { id:"1-9", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (슈퍼적립) & 우위 목표",
+    competitor:71000, ss:{immediate:81000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:8100,delivery:3000},
+    sensedPrice:73470, inferiorRatio:"3.36%",
+    variants:[
+      { type:"쿠폰", range:"0~5%", goal:"우위 3%", benefitRate:"쿠폰 7%", expected:"쿠폰 7% → 체감가 68,538원 (우위목표가 68,870원 미만, 절하)" },
+      { type:"적립", range:"0~5%", goal:"우위 3%", benefitRate:"적립 6%", expected:"적립 6% (다프) 추가 → 체감가 68,610원 (우위목표가 68,870원 미만, 절하)" },
+    ]},
+  { id:"1-10", group:"#1 정상 적용", title:"기존 적용 혜택 있음 (상품중복할인+슈퍼적립) & 우위 목표",
+    competitor:60000, ss:{immediate:75000,productDiscount:0,dupDiscount:3750,cartDiscount:0,addPoint:0,superPoint:7125,delivery:0},
+    sensedPrice:61987, inferiorRatio:"3.20%", note:"적립기준가 = 75,000 - 3,750 = 71,250 기준 계산",
+    variants:[
+      { type:"쿠폰", range:"0~10%", goal:"우위 3%", benefitRate:"쿠폰 6%", expected:"쿠폰 6% → 체감가 58,072원 (우위목표가 58,200원 미만, 절하)" },
+      { type:"적립", range:"0~10%", goal:"우위 3%", benefitRate:"적립 6%", expected:"적립 6% (다프) 추가 → 체감가 57,712원 (우위목표가 58,200원 미만, 절하)" },
+    ]},
+  { id:"2-1", group:"#2 미적용", title:"경쟁사 가격 전파 지연",
+    competitor:null, ss:{immediate:13000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:12610, inferiorRatio:"-", note:"제플린 '열위종료' 필드로 유효기간 확인",
+    variants:[{ type:"쿠폰 또는 적립", range:"0~10%", goal:"우위 5%", benefitRate:"미적용", expected:"유효기간(계산완료+주기+1h) 경과 후 혜택 미적용 확인" }]},
+  { id:"2-2", group:"#2 미적용", title:"상품 모니터링에서 제외",
+    competitor:12000, ss:{immediate:13000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:12610, inferiorRatio:"4.84%",
+    variants:[{ type:"쿠폰 또는 적립", range:"0~10%", goal:"우위 5%", benefitRate:"미적용", expected:"모니터링 그룹에서 상품 삭제 → 유효기간 경과 후 혜택 미적용" }]},
+  { id:"2-3", group:"#2 미적용", title:"최소 열위비율 미만",
+    competitor:71000, ss:{immediate:81000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:8100,delivery:3000},
+    sensedPrice:73470, inferiorRatio:"3.36%", note:"경계값 검증: 열위비율 = 최소(5%)와 같은 경우는 적용되어야 함",
+    variants:[{ type:"쿠폰 또는 적립", range:"5~10%", goal:"우위 3%", benefitRate:"미적용", expected:"열위비율 3.36% < 최소 5% → 구간 미달로 혜택 미적용" }]},
+  { id:"2-4", group:"#2 미적용", title:"최대 열위비율 초과",
+    competitor:25000, ss:{immediate:27000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:0,superPoint:2700,delivery:3000},
+    sensedPrice:27300, inferiorRatio:"8.79%", note:"경계값 검증: 열위비율 = 최대(5%)와 같은 경우는 적용되어야 함",
+    variants:[{ type:"쿠폰 또는 적립", range:"0~5%", goal:"동등", benefitRate:"미적용", expected:"열위비율 8.79% > 최대 5% → 구간 초과로 혜택 미적용" }]},
+  { id:"2-5", group:"#2 미적용", title:"혜택 적용 비율 초과 (20% 초과)",
+    competitor:72000, ss:{immediate:100000,productDiscount:0,dupDiscount:5000,cartDiscount:5000,addPoint:0,superPoint:0,delivery:0},
+    sensedPrice:87300, inferiorRatio:"17.53%", note:"우위목표가 68,400원 / 19% 체감가 68,870(미달) → 21% 필요",
+    variants:[{ type:"쿠폰 또는 적립", range:"10~20%", goal:"우위 5%", benefitRate:"미적용", expected:"구간 내(17.53%)이나 목표 달성 필요 비율 21% → 20% 초과로 혜택 미적용" }]},
+  { id:"3-1", group:"#3 혜택 2개", title:"다프 쿠폰 2개 등록",
+    competitor:53000, ss:{immediate:63000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:4410,superPoint:0,delivery:1000},
+    sensedPrice:57700, inferiorRatio:"8.15%",
+    variants:[{ type:"쿠폰A(5~10%/우위7%) + 쿠폰B(10~20%/우위10%)", range:"-", goal:"-", benefitRate:"쿠폰A 14%", expected:"열위비율 8.15% → 쿠폰A 구간만 해당 → 쿠폰A 14% 단독 적용" }]},
+  { id:"3-2", group:"#3 혜택 2개", title:"다프 적립 2개 등록",
+    competitor:53000, ss:{immediate:63000,productDiscount:0,dupDiscount:0,cartDiscount:0,addPoint:4410,superPoint:0,delivery:1000},
+    sensedPrice:57700, inferiorRatio:"8.15%",
+    variants:[{ type:"적립A(0~20%/우위7%) + 적립B(0~20%/우위10%)", range:"-", goal:"-", benefitRate:"적립B 15%", expected:"A·B 모두 구간 내 → 더 높은 혜택 그룹B 선택 → 적립B 15% 적용" }]},
+  { id:"3-3", group:"#3 혜택 2개", title:"다프 쿠폰+적립 → 쿠폰만 적용",
+    competitor:53000, ss:{immediate:63000,productDiscount:3130,dupDiscount:0,cartDiscount:0,addPoint:4189,superPoint:0,delivery:1000},
+    sensedPrice:54866, inferiorRatio:"3.40%",
+    variants:[{ type:"쿠폰(5~15%/우위3%) + 적립(1~10%/우위1%)", range:"-", goal:"-", benefitRate:"쿠폰 15%", expected:"쿠폰 15% 후 체감가 51,869 → 적립 목표 이미 달성 → 적립 미적용" }]},
+  { id:"3-4", group:"#3 혜택 2개", title:"다프 쿠폰+적립 → 적립만 적용",
+    competitor:53000, ss:{immediate:63000,productDiscount:3330,dupDiscount:0,cartDiscount:0,addPoint:3158,superPoint:0,delivery:1000},
+    sensedPrice:57855, inferiorRatio:"8.39%",
+    variants:[{ type:"쿠폰(1~5%/우위3%) + 적립(0~10%/우위1%)", range:"-", goal:"-", benefitRate:"적립 8%", expected:"쿠폰 열위구간 미해당 → 미적용 / 적립 8% 단독 적용" }]},
+  { id:"3-5", group:"#3 혜택 2개", title:"다프 쿠폰+적립 → 둘 다 적용",
+    competitor:53000, ss:{immediate:63000,productDiscount:3330,dupDiscount:0,cartDiscount:0,addPoint:3158,superPoint:0,delivery:1000},
+    sensedPrice:57855, inferiorRatio:"8.39%",
+    variants:[{ type:"쿠폰(5~15%/우위3%) + 적립(1~10%/우위7%)", range:"-", goal:"-", benefitRate:"쿠폰 15% + 적립 4%", expected:"쿠폰 15% 적용(51,869) → 적립 목표 미달 → 적립 4% 추가 적용" }]},
+];
+
+const STATUS_OPTIONS = ["미진행","진행중","통과 ✅","실패 ❌","블로킹 🚫"];
+const STATUS_COLORS  = { "미진행":"bg-gray-100 text-gray-500","진행중":"bg-blue-100 text-blue-700","통과 ✅":"bg-green-100 text-green-700","실패 ❌":"bg-red-100 text-red-700","블로킹 🚫":"bg-yellow-100 text-yellow-700" };
+const GROUPS = [...new Set(TEST_CASES.map(t => t.group))];
+const fmt    = n => n == null ? "-" : Number(n).toLocaleString();
+const nowKST = () => new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,16);
+const caseKey = (id, vi) => `${id}__${vi}`;
+const emptyForm = () => ({ status:"미진행", testedAt:"", actualBenefitRate:"", actualSensedPrice:"", actualResult:"", memo:"" });
+const calcPts = ss => {
+  const b = ss.immediate - ss.productDiscount - ss.dupDiscount - ss.cartDiscount;
+  return { basic: Math.floor(b*0.01), member: Math.floor(b*0.02) };
+};
+
+function App() {
+  const [sel, setSel]         = useState(TEST_CASES[0]);
+  const [varIdx, setVarIdx]   = useState(0);
+  const [form, setForm]       = useState(emptyForm());
+  const [snapshots, setSnaps] = useState([]);
+  const [sidebar, setSidebar] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+  const [loaded, setLoaded]   = useState(false);
+  const [images, setImages]   = useState([]);
+  const [statusCache, setStatusCache] = useState({});
+  const fileRef = useRef();
+
+  const ck = caseKey(sel.id, varIdx);
+
+  useEffect(() => {
+    setLoaded(false); setSnaps([]); setForm(emptyForm()); setImages([]);
+    api.getRecords(ck).then(rows => {
+      if (Array.isArray(rows) && rows.length > 0) {
+        setSnaps(rows);
+        const l = rows[0];
+        setForm({ status:l.status??"미진행", testedAt:l.tested_at??"", actualBenefitRate:l.actual_benefit_rate??"", actualSensedPrice:l.actual_sensed_price??"", actualResult:l.actual_result??"", memo:l.memo??"" });
+        setStatusCache(p => ({ ...p, [ck]: l.status??"미진행" }));
+      }
+      setLoaded(true); setSyncMsg("✅ 로드됨"); setTimeout(() => setSyncMsg(""), 1500);
+    }).catch(() => { setLoaded(true); setSyncMsg("⚠️ 로드 실패"); });
+  }, [ck]);
+
+  const addSnapshot = async () => {
+    setSaving(true);
+    const row = { case_id:ck, status:form.status, tested_at:form.testedAt||nowKST(), actual_benefit_rate:form.actualBenefitRate, actual_sensed_price:form.actualSensedPrice, actual_result:form.actualResult, memo:form.memo };
+    const rows = await api.addRecord(row);
+    if (Array.isArray(rows) && rows[0]) { setSnaps(p => [rows[0],...p]); setStatusCache(p => ({...p,[ck]:form.status})); }
+    setSaving(false); setSyncMsg("💾 기록 저장됨"); setTimeout(() => setSyncMsg(""), 1500);
+  };
+
+  const deleteSnap = async id => {
+    await api.deleteRecord(id);
+    setSnaps(p => { const n=p.filter(s=>s.id!==id); setStatusCache(c=>({...c,[ck]:n[0]?.status??"미진행"})); return n; });
+  };
+
+  const upd = (f,v) => setForm(p => ({...p,[f]:v}));
+  const handleImages = e => { Array.from(e.target.files).forEach(f => { const r=new FileReader(); r.onload=ev=>setImages(p=>[...p,{name:f.name,src:ev.target.result}]); r.readAsDataURL(f); }); e.target.value=""; };
+
+  const pts = calcPts(sel.ss);
+  const variant = sel.variants[varIdx];
+  const getCaseStatus = tc => { const ss=tc.variants.map((_,vi)=>statusCache[caseKey(tc.id,vi)]??"미진행"); return ss.includes("실패 ❌")?"실패 ❌":ss.includes("블로킹 🚫")?"블로킹 🚫":ss.includes("진행중")?"진행중":ss.every(s=>s==="통과 ✅")?"통과 ✅":"미진행"; };
+  const done = TEST_CASES.filter(tc=>getCaseStatus(tc)==="통과 ✅").length;
+
+  return (
+    <div style={{fontFamily:"'Nanum Gothic',sans-serif",height:"100vh",display:"flex",background:"#f9fafb",fontSize:"14px"}}>
+
+      {/* Sidebar */}
+      <div style={{width:sidebar?"288px":"0",overflow:"hidden",transition:"width 0.2s",background:"white",borderRight:"1px solid #e5e7eb",display:"flex",flexDirection:"column",flexShrink:0}}>
+        <div style={{padding:"16px",background:"linear-gradient(to right,#16a34a,#10b981)"}}>
+          <div style={{color:"white",fontWeight:"800",fontSize:"15px"}}>🧪 다프 테스트 트래커</div>
+          <div style={{color:"#bbf7d0",fontSize:"11px",marginTop:"2px"}}>Supabase 실시간 연동</div>
+          <div style={{color:"#bbf7d0",fontSize:"11px",marginTop:"4px"}}>{done}/{TEST_CASES.length} 완료</div>
+          <div style={{marginTop:"8px",background:"#166534",borderRadius:"9999px",height:"6px"}}>
+            <div style={{background:"white",borderRadius:"9999px",height:"6px",width:`${(done/TEST_CASES.length)*100}%`,transition:"width 0.3s"}}/>
+          </div>
+        </div>
+        <div style={{overflowY:"auto",flex:1,paddingTop:"8px",paddingBottom:"8px"}}>
+          {GROUPS.map(g => (
+            <div key={g}>
+              <div style={{padding:"6px 12px",fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em"}}>{g}</div>
+              {TEST_CASES.filter(tc=>tc.group===g).map(tc => {
+                const st = getCaseStatus(tc);
+                return (
+                  <button key={tc.id} onClick={()=>{setSel(tc);setVarIdx(0);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderLeft:`2px solid ${sel.id===tc.id?"#16a34a":"transparent"}`,background:sel.id===tc.id?"#f0fdf4":"transparent",border:"none",borderLeft:`2px solid ${sel.id===tc.id?"#16a34a":"transparent"}`,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"4px"}}>
+                    <span style={{fontSize:"11px",color:"#374151",lineHeight:"1.4"}}>[{tc.id}] {tc.title}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${STATUS_COLORS[st]}`}>{st==="미진행"?"-":st.split(" ")[1]??st}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Topbar */}
+        <div style={{background:"white",borderBottom:"1px solid #e5e7eb",padding:"10px 16px",display:"flex",alignItems:"center",gap:"12px"}}>
+          <button onClick={()=>setSidebar(s=>!s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"18px",color:"#9ca3af"}}>☰</button>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:"800",color:"#111827"}}>[{sel.id}] {sel.title}</div>
+            <div style={{fontSize:"11px",color:"#9ca3af"}}>{sel.group}</div>
+          </div>
+          {(saving||syncMsg) && <span style={{fontSize:"11px",padding:"2px 8px",borderRadius:"9999px",background:saving?"#eff6ff":"#f0fdf4",color:saving?"#3b82f6":"#16a34a"}}>{saving?"💾 저장 중...":syncMsg}</span>}
+        </div>
+
+        <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:"12px"}}>
+
+          {/* 세팅값 3열 */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"12px"}}>
+            {/* 혜택 정책 */}
+            <div style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"16px"}}>
+              <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",marginBottom:"8px"}}>혜택 정책</div>
+              {sel.variants.length > 1 && (
+                <div style={{display:"flex",gap:"4px",marginBottom:"12px"}}>
+                  {sel.variants.map((v,i) => (
+                    <button key={i} onClick={()=>setVarIdx(i)} style={{flex:1,padding:"4px",borderRadius:"8px",fontSize:"11px",fontWeight:"800",border:`1px solid ${varIdx===i?"#16a34a":"#e5e7eb"}`,background:varIdx===i?"#16a34a":"white",color:varIdx===i?"white":"#6b7280",cursor:"pointer"}}>
+                      {v.type.length>5?v.type.slice(0,3)+"…":v.type}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Row label="유형" val={variant.type}/><Row label="열위 구간" val={variant.range??"-"}/><Row label="목표" val={variant.goal}/>
+            </div>
+            {/* 경쟁사 */}
+            <div style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"16px"}}>
+              <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",marginBottom:"8px"}}>경쟁사 가격</div>
+              <Row label="경쟁사가" val={sel.competitor?`${fmt(sel.competitor)}원`:"미전파"} accent/>
+            </div>
+            {/* 스스 */}
+            <div style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"16px"}}>
+              <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",marginBottom:"8px"}}>스스 가격</div>
+              <Row label="즉시할인 후 가격" val={`${fmt(sel.ss.immediate)}원`}/>
+              {sel.ss.productDiscount>0&&<Row label="└ 상품할인" val={`-${fmt(sel.ss.productDiscount)}원`}/>}
+              {sel.ss.dupDiscount>0&&<Row label="└ 상품중복할인" val={`-${fmt(sel.ss.dupDiscount)}원`}/>}
+              {sel.ss.cartDiscount>0&&<Row label="└ 장바구니할인" val={`-${fmt(sel.ss.cartDiscount)}원`}/>}
+              <Row label="기본적립(1%)" val={`-${fmt(pts.basic)}원`}/>
+              <Row label="멤버십적립(2%)" val={`-${fmt(pts.member)}원`}/>
+              {sel.ss.addPoint>0&&<Row label="추가적립" val={`-${fmt(sel.ss.addPoint)}원`}/>}
+              {sel.ss.superPoint>0&&<Row label="슈퍼적립" val={`-${fmt(sel.ss.superPoint)}원`}/>}
+              <Row label="배송비" val={`${fmt(sel.ss.delivery)}원`}/>
+            </div>
+          </div>
+
+          {/* 기대결과 */}
+          <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"12px",padding:"16px"}}>
+            <div style={{fontSize:"11px",fontWeight:"800",color:"#93c5fd",textTransform:"uppercase",marginBottom:"8px"}}>계산결과 (기대값)</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"16px",marginBottom:"8px"}}>
+              <Stat label="체감가(다프 적용 전)" val={`${fmt(sel.sensedPrice)}원`}/>
+              <Stat label="열위비율" val={sel.inferiorRatio}/>
+              <Stat label="기대 혜택비율" val={variant.benefitRate}/>
+            </div>
+            <div style={{paddingTop:"8px",borderTop:"1px solid #bfdbfe"}}>
+              <div style={{fontSize:"11px",color:"#93c5fd",marginBottom:"2px"}}>기대결과</div>
+              <div style={{fontWeight:"800",color:"#1e3a8a"}}>{variant.expected}</div>
+              {sel.note&&<div style={{fontSize:"11px",color:"#3b82f6",marginTop:"4px"}}>📌 {sel.note}</div>}
+            </div>
+          </div>
+
+          {/* 테스트 기록 입력 */}
+          <div style={{background:"white",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"16px",display:"flex",flexDirection:"column",gap:"12px"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase"}}>테스트 기록 입력</div>
+              <button onClick={addSnapshot} disabled={saving} style={{padding:"6px 16px",background:"#16a34a",color:"white",border:"none",borderRadius:"8px",fontSize:"12px",fontWeight:"800",cursor:"pointer",opacity:saving?0.5:1}}>
+                {saving?"저장 중...":"+ 기록 추가"}
+              </button>
+            </div>
+            <div style={{display:"flex",gap:"12px"}}>
+              <div>
+                <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>상태</label>
+                <select value={form.status} onChange={e=>upd("status",e.target.value)} className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${STATUS_COLORS[form.status]}`}>
+                  {STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div style={{flex:1}}>
+                <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>시각 (KST)</label>
+                <div style={{display:"flex",gap:"4px"}}>
+                  <input type="datetime-local" value={form.testedAt} onChange={e=>upd("testedAt",e.target.value)} style={{flex:1,border:"1px solid #d1d5db",borderRadius:"8px",padding:"6px 12px",fontSize:"13px"}}/>
+                  <button onClick={()=>upd("testedAt",nowKST())} style={{padding:"6px 12px",background:"#f0fdf4",border:"1px solid #86efac",color:"#16a34a",borderRadius:"8px",fontSize:"11px",fontWeight:"800",cursor:"pointer",whiteSpace:"nowrap"}}>지금</button>
+                </div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+              <div>
+                <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>실제 적용된 혜택 비율</label>
+                <input value={form.actualBenefitRate} onChange={e=>upd("actualBenefitRate",e.target.value)} placeholder="예: 9%" style={{width:"100%",border:"1px solid #d1d5db",borderRadius:"8px",padding:"6px 12px",fontSize:"13px",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>실제 체감가</label>
+                <input value={form.actualSensedPrice} onChange={e=>upd("actualSensedPrice",e.target.value)} placeholder="예: 11,476" style={{width:"100%",border:"1px solid #d1d5db",borderRadius:"8px",padding:"6px 12px",fontSize:"13px",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div>
+              <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>실제 결과 / 이슈 내용</label>
+              <textarea value={form.actualResult} onChange={e=>upd("actualResult",e.target.value)} rows={2} placeholder="기대값과 다른 경우 실제 결과를 기록하세요..." style={{width:"100%",border:"1px solid #d1d5db",borderRadius:"8px",padding:"6px 12px",fontSize:"13px",resize:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>메모</label>
+              <textarea value={form.memo} onChange={e=>upd("memo",e.target.value)} rows={2} placeholder="테스트 조건, 특이사항 등 자유롭게..." style={{width:"100%",border:"1px solid #d1d5db",borderRadius:"8px",padding:"6px 12px",fontSize:"13px",resize:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:"11px",color:"#6b7280",display:"block",marginBottom:"4px"}}>스크린샷 <span style={{color:"#9ca3af"}}>(이 기기에서만 보임)</span></label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
+                {images.map((img,i)=>(
+                  <div key={i} style={{position:"relative",width:"80px",height:"80px",borderRadius:"8px",overflow:"hidden",border:"1px solid #e5e7eb"}}>
+                    <img src={img.src} alt={img.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    <button onClick={()=>setImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:"2px",right:"2px",background:"#ef4444",color:"white",border:"none",borderRadius:"9999px",width:"16px",height:"16px",fontSize:"10px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                  </div>
+                ))}
+                <button onClick={()=>fileRef.current.click()} style={{width:"80px",height:"80px",borderRadius:"8px",border:"2px dashed #d1d5db",background:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#9ca3af",gap:"4px"}}>
+                  <span style={{fontSize:"20px",lineHeight:1}}>+</span><span style={{fontSize:"11px"}}>추가</span>
+                </button>
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImages}/>
+            </div>
+          </div>
+
+          {/* 저장된 기록 타임라인 */}
+          {!loaded ? (
+            <div style={{textAlign:"center",padding:"16px",color:"#9ca3af",fontSize:"12px"}}>기록 불러오는 중...</div>
+          ) : snapshots.length === 0 ? (
+            <div style={{background:"white",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"24px",textAlign:"center",color:"#9ca3af",fontSize:"12px"}}>
+              아직 저장된 기록이 없어요. 위에서 작성 후 <strong>+ 기록 추가</strong>를 눌러주세요.
+            </div>
+          ) : (
+            <div style={{background:"white",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"16px"}}>
+              <div style={{fontSize:"11px",fontWeight:"800",color:"#9ca3af",textTransform:"uppercase",marginBottom:"12px"}}>
+                저장된 기록 <span style={{background:"#dcfce7",color:"#16a34a",padding:"2px 6px",borderRadius:"9999px",fontSize:"11px"}}>{snapshots.length}개</span>
+              </div>
+              <div style={{position:"relative",paddingLeft:"16px"}}>
+                <div style={{position:"absolute",left:"7px",top:"8px",bottom:"8px",width:"2px",background:"#e5e7eb"}}/>
+                {snapshots.map((snap,i)=>(
+                  <div key={snap.id} style={{display:"flex",gap:"12px",alignItems:"flex-start",marginBottom:"12px",position:"relative"}}>
+                    <div style={{position:"relative",zIndex:1,width:"12px",height:"12px",borderRadius:"9999px",background:i===0?"#16a34a":"#d1d5db",border:"2px solid white",flexShrink:0,marginTop:"6px"}}/>
+                    <div style={{flex:1,background:"#f9fafb",borderRadius:"12px",border:"1px solid #f3f4f6",padding:"12px"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${STATUS_COLORS[snap.status]}`}>{snap.status}</span>
+                          <span style={{fontSize:"11px",color:"#9ca3af"}}>{snap.tested_at?snap.tested_at.replace("T"," "):"시각 없음"}</span>
+                        </div>
+                        <button onClick={()=>deleteSnap(snap.id)} style={{fontSize:"11px",color:"#d1d5db",background:"none",border:"none",cursor:"pointer"}}>삭제</button>
+                      </div>
+                      {(snap.actual_benefit_rate||snap.actual_sensed_price)&&(
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px",marginBottom:"6px"}}>
+                          {snap.actual_benefit_rate&&<Row label="혜택 비율" val={snap.actual_benefit_rate}/>}
+                          {snap.actual_sensed_price&&<Row label="체감가" val={snap.actual_sensed_price}/>}
+                        </div>
+                      )}
+                      {snap.actual_result&&<div style={{fontSize:"12px",color:"#374151",background:"white",borderRadius:"6px",padding:"6px 8px",border:"1px solid #f3f4f6",marginBottom:"4px"}}><span style={{color:"#9ca3af",marginRight:"4px"}}>결과</span>{snap.actual_result}</div>}
+                      {snap.memo&&<div style={{fontSize:"12px",color:"#6b7280",background:"white",borderRadius:"6px",padding:"6px 8px",border:"1px solid #f3f4f6",marginBottom:"4px"}}><span style={{color:"#9ca3af",marginRight:"4px"}}>메모</span>{snap.memo}</div>}
+                      <div style={{fontSize:"11px",color:"#d1d5db",marginTop:"4px"}}>저장: {new Date(snap.saved_at).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({label,val,accent}) {
+  return <div style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}>
+    <span style={{fontSize:"11px",color:"#6b7280"}}>{label}</span>
+    <span style={{fontSize:"11px",fontWeight:"800",color:accent?"#dc2626":"#111827"}}>{val}</span>
+  </div>;
+}
+function Stat({label,val}) {
+  return <div>
+    <div style={{fontSize:"11px",color:"#93c5fd"}}>{label}</div>
+    <div style={{fontWeight:"800",color:"#1e3a8a",fontSize:"15px"}}>{val}</div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
